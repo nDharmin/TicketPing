@@ -6,7 +6,7 @@ app.get("/", (req, res) => {
   res.send("Bot is running!");
 });
 
-app.listen(3000, () => {
+app.listen(process.env.PORT || 3000, () => {
   console.log("Web server running");
 });
 const { Client, GatewayIntentBits } = require("discord.js");
@@ -74,7 +74,7 @@ async function notifyMods(guild, config, channelName) {
 }
 
 // ✅ Bot Ready
-client.once("clientReady", () => {
+client.once("ready", () => {
   console.log(`✅ Bot is online: ${client.user.tag}`);
 });
 
@@ -105,9 +105,9 @@ client.on("messageCreate", (message) => {
   }
 
   // Optional test command
-  if (message.content === "!testdm") {
-    notifyMods(channel.guild, config, channel.name);
-  }
+if (message.content === "!testdm") {
+  notifyMods(message.guild, config, message.channel.name);
+}
 });
 
 // 🔥 IMPORTANT: Detect Ticket Tool ticket creation
@@ -122,6 +122,5 @@ client.on("channelCreate", (channel) => {
     notifyMods(channel.guild, config, channel.name);
   }
 });
-
 // ✅ Login
 client.login(process.env.TOKEN);
