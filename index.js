@@ -16,9 +16,7 @@ const fs = require("fs");
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers, // 🔥 REQUIRED
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
@@ -134,37 +132,6 @@ client.on("interactionCreate", async (interaction) => {
 
     console.log(`✅ Mod role set: ${role.name} in ${interaction.guild.name}`);
   }
-});
-// ✅ Command: Set Mod Role
-client.on("messageCreate", (message) => {
-  if (message.author.bot) return;
-
-  console.log("Message received:", message.content);
-
-  if (message.content.startsWith("!setmodrole")) {
-    const guildId = message.guild.id;
-
-    const role = message.mentions.roles.first();
-
-    if (!role) {
-      return message.reply("❌ Please mention a role like @Admin");
-    }
-
-    if (!config[guildId]) {
-      config[guildId] = {};
-    }
-
-    config[guildId].modRole = role.id;
-
-    fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
-
-    message.reply(`✅ Mod role set to ${role.name}`);
-  }
-
-  // Optional test command
-if (message.content === "!testdm") {
-  notifyMods(message.guild, config, message.channel.name);
-}
 });
 
 // 🔥 IMPORTANT: Detect Ticket Tool ticket creation
