@@ -22,6 +22,32 @@ const client = new Client({
   ],
 });
 
+// Register /setmodrole command
+const commands = [
+  new SlashCommandBuilder()
+    .setName("setmodrole")
+    .setDescription("Set the moderator role for ticket notifications")
+    .addRoleOption(option =>
+      option
+        .setName("role")
+        .setDescription("Choose the moderator role")
+        .setRequired(true)
+    )
+].map(command => command.toJSON());
+
+const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+client.once("ready", async () => {
+  try {
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands }
+    );
+    console.log("✅ Slash commands registered!");
+  } catch (error) {
+    console.error("❌ Slash command registration failed:", error);
+  }
+});
 // ✅ Load config
 let config = {};
 if (fs.existsSync("config.json")) {
