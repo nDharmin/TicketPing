@@ -104,6 +104,37 @@ client.once("ready", () => {
   console.log(`✅ Bot is online: ${client.user.tag}`);
 });
 
+// Handle /setmodrole command
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "setmodrole") {
+    const guildId = interaction.guildId;
+    const role = interaction.options.getRole("role");
+
+    if (!interaction.memberPermissions.has("ManageRoles")) {
+      return interaction.reply({
+        content: "❌ You need Manage Roles permission to use this command.",
+        ephemeral: true
+      });
+    }
+
+    if (!config[guildId]) {
+      config[guildId] = {};
+    }
+
+    config[guildId].modRole = role.id;
+
+    fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
+
+    await interaction.reply({
+      content: `✅ Mod role set to ${role.name}`,
+      ephemeral: true
+    });
+
+    console.log(`✅ Mod role set: ${role.name} in ${interaction.guild.name}`);
+  }
+});
 // ✅ Command: Set Mod Role
 client.on("messageCreate", (message) => {
   if (message.author.bot) return;
