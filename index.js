@@ -1,26 +1,259 @@
+
 require("dotenv").config();
+
 const express = require("express");
+const crypto = require("crypto");
+const {
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  PermissionFlagsBits
+} = require("discord.js");
+
+// ================================
+// EXPRESS SERVER
+// ================================
+
 const app = express();
 
 app.get("/", (req, res) => {
-  res.send("Bot is running!");
+  res.send("TicketPing is running!");
 });
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Web server running");
 });
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require("discord.js");
-const fs = require("fs");
 
-// ✅ Create client (IMPORTANT: includes GuildMembers)
+// ================================
+// ENCRYPTION SETTINGS
+// ================================
+
+const ENCRYPTION_KEY = process.env.CONFIG_ENCRYPTION_KEY;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+
+const GITHUB_OWNER = "nDharmin";
+const GITHUB_REPO = "TicketPing-Data";
+const CONFIG_FILE = "config.enc.json";
+
+if (!ENCRYPTION_KEY || !/^[a-fA-F0-9]{64}$/.test(ENCRYPTION_KEY)) {
+  throw new Error("Invalid CONFIG_ENCRYPTION_KEY");
+}
+
+if (!GITHUB_TOKEN) {
+  throw new Error("GITHUB_TOKEN is missing");
+}
+
+const encryptionKey = Buffer.from(ENCRYPTION_KEY, "hex");
+
+let config = {};
+let configSha = null;
+
+// ================================
+// ENCRYPT CONFIGURATION
+// ================================
+
+function encryptConfig(data) {
+  const iv = crypto.randomBytes(12);
+
+  const cipher = crypto.createCipheriv(
+    "aes-256-gcm",
+    encryptionKey,
+    iv
+  );
+
+  const encrypted = Buffer.concat([
+    cipher.update(JSON.stringify(data), "utf8"),
+    cipher.final()
+  ]);
+
+  const tag = cipher.getAuthTag();
+
+  return JSON.stringify({
+    version: 1,
+    algorithm: "aes-256-gcm",
+    iv: iv.toString("hex"),
+    tag: tag.toString("hex"),
+    data: encrypted.toString("hex")
+  });
+}
+
+// ================================
+// DECRYPT CONFIGURATION
+// ================================
+
+function decryptConfig(encryptedText) {
+  const stored = JSON.parse(encryptedText);
+
+  if (
+    stored.version !== 1 ||
+    stored.algorithm !== "aes-256-gcm"
+  ) {
+    throw new Error("Unknown encrypted configuration format");
+  }
+
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    encryptionKey,
+    Buffer.from(stored.iv, "hex")
+  );
+
+  decipher.setAuthTag(Buffer.from(stored.tag, "hex"));
+
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(stored.data, "hex")),
+    decipher.final()
+  ]);
+
+  return JSON.parse(decrypted.toString("utf8"));
+}
+
+// ================================
+// GITHUB API
+// ================================
+
+const githubHeaders = {
+  Authorization: `Bearer ${GITHUB_TOKEN}`,
+  Accept: "application/vnd.github+json",
+  "X-GitHub-Api-Version": "2022-11-28",
+  "Content-Type": "application/json"
+};
+
+const repoUrl =
+  `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`;
+
+async function githubRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...githubHeaders,
+      ...(options.headers || {})
+    }
+  });
+
+  return response;
+}
+
+// ================================
+// SAVE ENCRYPTED CONFIGURATION
+// ================================
+
+async function saveConfig(newConfig) {
+  const encryptedText = encryptConfig(newConfig);
+
+  const body = {
+    message: "Update encrypted TicketPing configuration",
+    content: Buffer.from(encryptedText, "utf8").toString("base64")
+  };
+
+  if (configSha) {
+    body.sha = configSha;
+  }
+
+  const response = await githubRequest(
+    `${repoUrl}/contents/${CONFIG_FILE}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(body)
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(
+      `GitHub save failed (${response.status}): ${errorText}`
+    );
+  }
+
+  const result = await response.json();
+
+  configSha = result.content.sha;
+
+  console.log("🔐 Encrypted configuration saved to GitHub!");
+}
+
+// ================================
+// LOAD ENCRYPTED CONFIGURATION
+// ================================
+
+async function loadConfig() {
+  // First verify that GitHub repository is accessible.
+
+  const repoResponse = await githubRequest(repoUrl);
+
+  if (!repoResponse.ok) {
+    throw new Error(
+      `Cannot access TicketPing-Data repository (${repoResponse.status})`
+    );
+  }
+
+  console.log("✅ Private GitHub repository connected!");
+
+  // Fetch encrypted configuration.
+
+  const response = await githubRequest(
+    `${repoUrl}/contents/${CONFIG_FILE}`
+  );
+
+  // If the file does not exist, initialize it.
+
+  if (response.status === 404) {
+    console.log("📁 No configuration found. Creating a new one.");
+
+    config = {};
+
+    await saveConfig(config);
+
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `GitHub configuration download failed (${response.status})`
+    );
+  }
+
+  const file = await response.json();
+
+  configSha = file.sha;
+
+  const encryptedText = Buffer.from(
+    file.content.replace(/\s/g, ""),
+    "base64"
+  ).toString("utf8");
+
+  // Decryption errors stop startup rather than resetting data.
+
+  config = decryptConfig(encryptedText);
+
+  if (
+    !config ||
+    typeof config !== "object" ||
+    Array.isArray(config)
+  ) {
+    throw new Error("Invalid configuration data");
+  }
+
+  console.log("🔓 Encrypted configuration loaded successfully!");
+}
+
+// ================================
+// DISCORD CLIENT
+// ================================
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-  ],
+    GatewayIntentBits.GuildMembers
+  ]
 });
 
-// Register /setmodrole command
+// ================================
+// SLASH COMMAND REGISTRATION
+// ================================
+
 const commands = [
   new SlashCommandBuilder()
     .setName("setmodrole")
@@ -33,127 +266,186 @@ const commands = [
     )
 ].map(command => command.toJSON());
 
-const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+const rest = new REST({ version: "10" })
+  .setToken(process.env.TOKEN);
+
+// ================================
+// BOT READY
+// ================================
 
 client.once("ready", async () => {
+  console.log(`✅ Bot is online: ${client.user.tag}`);
+
   try {
     await rest.put(
       Routes.applicationCommands(client.user.id),
       { body: commands }
     );
+
     console.log("✅ Slash commands registered!");
   } catch (error) {
     console.error("❌ Slash command registration failed:", error);
   }
-});
-// ✅ Load config
-let config = {};
-if (fs.existsSync("config.json")) {
-  config = JSON.parse(fs.readFileSync("config.json"));
-} else {
-  fs.writeFileSync("config.json", JSON.stringify({}, null, 2));
-}
-
-// ✅ Notify Mods Function
-async function notifyMods(guild, config, channelName) {
-  const guildId = guild.id;
-
-  console.log("📌 Guild ID:", guildId);
-
-  if (!config[guildId]) {
-    console.log("❌ No config for this server");
-    return;
-  }
-
-  const roleId = config[guildId].modRole;
-
-  if (!roleId) {
-    console.log("❌ No role set");
-    return;
-  }
-
-  // 🔥 FETCH ALL MEMBERS (IMPORTANT FIX)
-  await guild.members.fetch();
-
-  const role = guild.roles.cache.get(roleId);
-
-  if (!role) {
-    console.log("❌ Role not found");
-    return;
-  }
-
-  console.log("✅ Role:", role.name);
-  console.log("👥 Members:", role.members.size);
-
-  role.members.forEach(async (member) => {
-    try {
-      await member.send(`📩 New ticket created!
-📁 Channel: ${channelName}
-🔗 Server: ${guild.name}`);
-      console.log(`✅ DM sent to ${member.user.tag}`);
-    } catch (err) {
-      console.log(`❌ Cannot DM ${member.user.tag}`);
-    }
-  });
-}
-
-// ✅ Bot Ready
-client.once("ready", () => {
-  console.log(`✅ Bot is online: ${client.user.tag}`);
 
   const guilds = client.guilds.cache;
 
   console.log(`🌐 Total servers: ${guilds.size}`);
-  console.log("📋 Servers where TicketPing is installed:");
-
-  guilds.forEach((guild, index) => {
-    console.log(`${index + 1}. ${guild.name} | ID: ${guild.id}`);
-  });
 });
 
-// Handle /setmodrole command
+// ================================
+// SET MODERATOR ROLE
+// ================================
+
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === "setmodrole") {
-    const guildId = interaction.guildId;
-    const role = interaction.options.getRole("role");
+  if (interaction.commandName !== "setmodrole") return;
 
-    if (!interaction.memberPermissions.has("ManageRoles")) {
+  try {
+    if (!interaction.memberPermissions?.has(
+      PermissionFlagsBits.ManageRoles
+    )) {
       return interaction.reply({
         content: "❌ You need Manage Roles permission to use this command.",
         ephemeral: true
       });
     }
 
-    if (!config[guildId]) {
-      config[guildId] = {};
-    }
+    const guildId = interaction.guildId;
+    const role = interaction.options.getRole("role");
 
-    config[guildId].modRole = role.id;
+    // Prepare updated configuration.
 
-    fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
+    const updatedConfig = {
+      ...config,
+      [guildId]: {
+        ...(config[guildId] || {}),
+        modRole: role.id
+      }
+    };
+
+    // Save encrypted configuration before confirming.
+
+    await saveConfig(updatedConfig);
+
+    config = updatedConfig;
 
     await interaction.reply({
       content: `✅ Mod role set to ${role.name}`,
       ephemeral: true
     });
 
-    console.log(`✅ Mod role set: ${role.name} in ${interaction.guild.name}`);
+    console.log(
+      `✅ Mod role set: ${role.name} in ${interaction.guild.name}`
+    );
+
+  } catch (error) {
+    console.error("❌ Could not update moderator role:", error);
+
+    if (interaction.replied || interaction.deferred) {
+      return interaction.followUp({
+        content: "❌ Could not save your moderator role. Please try again.",
+        ephemeral: true
+      });
+    }
+
+    await interaction.reply({
+      content: "❌ Could not save your moderator role. Please try again.",
+      ephemeral: true
+    });
   }
 });
 
-// 🔥 IMPORTANT: Detect Ticket Tool ticket creation
-client.on("channelCreate", (channel) => {
+// ================================
+// NOTIFY MODERATORS
+// ================================
+
+async function notifyMods(guild, channelName) {
+  try {
+    const guildId = guild.id;
+
+    console.log("📌 Guild ID:", guildId);
+
+    if (!config[guildId]) {
+      console.log("❌ No moderator configuration for this server");
+      return;
+    }
+
+    const roleId = config[guildId].modRole;
+
+    if (!roleId) {
+      console.log("❌ No moderator role configured");
+      return;
+    }
+
+    await guild.members.fetch();
+
+    const role = guild.roles.cache.get(roleId);
+
+    if (!role) {
+      console.log("❌ Moderator role not found");
+      return;
+    }
+
+    console.log("✅ Role:", role.name);
+    console.log("👥 Members:", role.members.size);
+
+    const results = await Promise.allSettled(
+      role.members.map(member =>
+        member.send(
+          `📩 New ticket created!
+📁 Channel: ${channelName}
+🔗 Server: ${guild.name}`
+        )
+      )
+    );
+
+    results.forEach((result, index) => {
+      const member = role.members.at(index);
+
+      if (result.status === "fulfilled") {
+        console.log(`✅ DM sent to ${member.user.tag}`);
+      } else {
+        console.log(`❌ Cannot DM ${member.user.tag}`);
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Notification error:", error);
+  }
+}
+
+// ================================
+// DETECT TICKET CREATION
+// ================================
+
+client.on("channelCreate", async (channel) => {
   if (!channel.guild) return;
 
   console.log("📢 Channel created:", channel.name);
 
-  // detect ticket channels (edit if needed)
-  if (channel.name.includes("ticket")) {
+  if (channel.name.toLowerCase().includes("ticket")) {
     console.log("🎫 Ticket detected!");
-    notifyMods(channel.guild, config, channel.name);
+
+    await notifyMods(channel.guild, channel.name);
   }
 });
-// ✅ Login
-client.login(process.env.TOKEN);
+
+// ================================
+// START BOT SAFELY
+// ================================
+
+async function startBot() {
+  console.log("🔄 Loading encrypted configuration...");
+
+  await loadConfig();
+
+  console.log("🔐 Configuration ready!");
+
+  await client.login(process.env.TOKEN);
+}
+
+startBot().catch(error => {
+  console.error("❌ TicketPing startup failed:", error);
+  process.exit(1);
+});
