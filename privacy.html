@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,47 +30,55 @@
     <p><strong>Last updated:</strong> November 9, 2026</p>
 
     <h2>1. Introduction</h2>
-    <p>TicketPing is a Discord bot that helps server moderation teams receive notifications when new support ticket channels are created. This policy explains what information TicketPing accesses and how it is handled.</p>
+    <p>TicketPing is a Discord bot that helps server moderation teams receive direct message notifications when new support ticket channels are created. This Privacy Policy explains what information the bot accesses, how it is used, where it is stored, and how users and server administrators can request its deletion.</p>
 
     <h2>2. Information We Access</h2>
+    <p>To provide its functionality, TicketPing may access or process the following information:</p>
     <ul>
         <li>Discord Server IDs.</li>
-        <li>Moderator role IDs configured by server administrators.</li>
-        <li>Server member information needed to identify moderators assigned to the configured role.</li>
-        <li>Server names and ticket channel names.</li>
-        <li>Basic Discord user information, such as usernames, needed for notification delivery and operational logs.</li>
+        <li>Moderator role IDs selected by server administrators.</li>
+        <li>Server member IDs and relevant member information needed to identify members assigned to the configured moderator role.</li>
+        <li>Server names and ticket channel names, which are included in moderator notifications.</li>
+        <li>Basic information returned by Discord when processing notification delivery.</li>
     </ul>
 
     <h2>3. How We Use Information</h2>
-    <p>TicketPing uses this information only to provide its ticket notification functionality. When a new ticket channel is created, TicketPing identifies members assigned to the configured moderator role and sends them a direct message containing the ticket channel name and server name.</p>
-    <p>Information is not used for advertising, profiling, or selling to third parties.</p>
+    <p>TicketPing uses this information only to operate its ticket notification functionality.</p>
+    <p>When a new ticket channel is created, TicketPing checks the server's configured moderator role, identifies the members assigned to that role, and sends them a direct message containing the ticket channel name and server name.</p>
+    <p>TicketPing does not use this information for advertising, profiling, or selling personal information.</p>
 
     <h2>4. Data Storage and Retention</h2>
-    <p>TicketPing stores server IDs and configured moderator role IDs in a configuration file hosted on Render.</p>
-    <p>TicketPing does not intentionally save retrieved guild member lists in persistent storage. Member information is retrieved when needed to identify moderators and send notifications.</p>
-    <p>Operational logs may contain server IDs, channel names, usernames, and notification delivery results. These logs may be retained by the hosting provider according to its applicable retention practices.</p>
+    <p>TicketPing stores server IDs and configured moderator role IDs in an encrypted configuration file in a private GitHub repository.</p>
+    <p>The configuration is encrypted using AES-256-GCM before it is transmitted to GitHub. The encryption key and GitHub access credentials are stored as environment variables in the bot's hosting environment and are not included in the public source-code repository.</p>
+    <p>Render is used to host and run the bot. The bot loads the encrypted configuration when it starts and decrypts it in memory for operation.</p>
+    <p>TicketPing does not intentionally store retrieved server member lists in its persistent configuration. Member information is retrieved when needed to identify moderators and deliver notifications.</p>
+    <p>Operational logs may contain limited technical information, such as notification delivery results, error details, and operational events. Logs are handled by the hosting provider according to its applicable retention and security practices.</p>
+    <p>Encrypted configuration may remain stored until it is updated or a deletion request is processed. Encrypted configuration may also exist in the private repository's version history.</p>
 
-    <h2>5. Sharing of Information</h2>
-    <p>TicketPing does not sell or rent personal information. Information necessary to operate the bot may be processed by:</p>
+    <h2>5. Third-Party Services</h2>
+    <p>TicketPing relies on the following services to operate:</p>
     <ul>
-        <li>Discord, which provides the platform and API.</li>
-        <li>Render, which hosts the bot and its configuration.</li>
+        <li><strong>Discord:</strong> Provides the platform, bot functionality, and API through which server and member information is accessed and moderator notifications are delivered.</li>
+        <li><strong>Render:</strong> Hosts the bot and runs its application code.</li>
+        <li><strong>GitHub:</strong> Stores the bot's encrypted configuration in a private repository.</li>
     </ul>
-    <p>These services handle information under their own privacy policies and terms.</p>
+    <p>These services may process information as necessary to provide their services and are subject to their respective privacy policies and terms.</p>
 
     <h2>6. Data Removal</h2>
-    <p>Server administrators can remove TicketPing from their server to stop further access to that server's information.</p>
-    <p>Administrators may also request removal of their server's stored configuration by contacting the developer.</p>
-    <p>For privacy-related requests, contact us using the email below. Requests will be reviewed and handled as reasonably possible.</p>
+    <p>Server administrators can remove TicketPing from their Discord server to stop the bot from accessing that server going forward.</p>
+    <p>Removing the bot does not automatically delete an existing saved server configuration.</p>
+    <p>Server administrators may request deletion of their server's stored configuration by emailing ticketping.support@gmail.com. Requests will be reviewed and the corresponding configuration will be removed where applicable.</p>
+    <p>Users may also contact us regarding privacy questions or data-related requests.</p>
 
     <h2>7. Security</h2>
-    <p>Reasonable measures are taken to protect the information used by TicketPing. However, no online service can guarantee absolute security.</p>
+    <p>TicketPing uses AES-256-GCM encryption to protect its stored configuration. Access to the private GitHub repository is restricted, and the encryption key and GitHub access credentials are kept separately from the encrypted configuration.</p>
+    <p>Reasonable measures are taken to protect information processed by the bot. However, no online service or method of transmission can guarantee absolute security.</p>
 
     <h2>8. Changes to This Policy</h2>
-    <p>This Privacy Policy may be updated when TicketPing's functionality or data practices change. The latest version will be published at the policy URL.</p>
+    <p>This Privacy Policy may be updated when TicketPing's functionality, storage arrangements, or data practices change. The latest version will be published at this policy URL.</p>
 
     <h2>9. Contact</h2>
-    <p>For questions, concerns, or data-related requests, contact:</p>
+    <p>For questions, concerns, or data deletion requests, contact:</p>
     <p><strong>Email:</strong> <a href="mailto:ticketping.support@gmail.com">ticketping.support@gmail.com</a></p>
 </main>
 </body>
