@@ -273,7 +273,7 @@ const rest = new REST({ version: "10" })
 // BOT READY
 // ================================
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`✅ Bot is online: ${client.user.tag}`);
 
   try {
@@ -307,7 +307,7 @@ client.on("interactionCreate", async (interaction) => {
     )) {
       return interaction.reply({
         content: "❌ You need Manage Roles permission to use this command.",
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -332,11 +332,11 @@ client.on("interactionCreate", async (interaction) => {
 
     await interaction.reply({
       content: `✅ Mod role set to ${role.name}`,
-      ephemeral: true
+      flags: 64
     });
 
     console.log(
-      `✅ Mod role set: ${role.name} in ${interaction.guild.name}`
+      "✅ Moderator role configuration updated."
     );
 
   } catch (error) {
@@ -345,13 +345,13 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.replied || interaction.deferred) {
       return interaction.followUp({
         content: "❌ Could not save your moderator role. Please try again.",
-        ephemeral: true
+        flags: 64
       });
     }
 
     await interaction.reply({
       content: "❌ Could not save your moderator role. Please try again.",
-      ephemeral: true
+      flags: 64
     });
   }
 });
@@ -364,7 +364,7 @@ async function notifyMods(guild, channelName) {
   try {
     const guildId = guild.id;
 
-    console.log("📌 Guild ID:", guildId);
+    console.log("📌 Checking moderator configuration.");
 
     if (!config[guildId]) {
       console.log("❌ No moderator configuration for this server");
@@ -387,7 +387,7 @@ async function notifyMods(guild, channelName) {
       return;
     }
 
-    console.log("✅ Role:", role.name);
+    console.log("✅ Moderator role found.");
     console.log("👥 Members:", role.members.size);
 
     const results = await Promise.allSettled(
@@ -404,9 +404,9 @@ async function notifyMods(guild, channelName) {
       const member = role.members.at(index);
 
       if (result.status === "fulfilled") {
-        console.log(`✅ DM sent to ${member.user.tag}`);
+        console.log("✅ Moderator notification sent.");
       } else {
-        console.log(`❌ Cannot DM ${member.user.tag}`);
+        console.log("❌ Could not deliver a moderator notification.");
       }
     });
 
@@ -422,7 +422,7 @@ async function notifyMods(guild, channelName) {
 client.on("channelCreate", async (channel) => {
   if (!channel.guild) return;
 
-  console.log("📢 Channel created:", channel.name);
+  console.log("📢 A new channel was created.");
 
   if (channel.name.toLowerCase().includes("ticket")) {
     console.log("🎫 Ticket detected!");
