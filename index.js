@@ -100,6 +100,15 @@ async function notifyMods(guild, config, channelName) {
 // ✅ Bot Ready
 client.once("ready", () => {
   console.log(`✅ Bot is online: ${client.user.tag}`);
+
+  const guilds = client.guilds.cache;
+
+  console.log(`🌐 Total servers: ${guilds.size}`);
+  console.log("📋 Servers where TicketPing is installed:");
+
+  guilds.forEach((guild, index) => {
+    console.log(`${index + 1}. ${guild.name} | ID: ${guild.id}`);
+  });
 });
 
 // Handle /setmodrole command
